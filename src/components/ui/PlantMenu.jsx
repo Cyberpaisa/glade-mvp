@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useGameStore, CROP_TYPES } from '../../store/gameStore'
+import { useGladeContract } from '../../hooks/useGladeContract'
 import SeedCard from './SeedCard'
+
+const SEED_TYPE_MAP = { coffee: 0, cacao: 1, vineyard: 2, solar: 3 }
 
 const PlantMenu = () => {
   const showPlantMenu = useGameStore(s => s.showPlantMenu)
@@ -14,11 +17,20 @@ const PlantMenu = () => {
   const closePlantMenu = useGameStore(s => s.closePlantMenu)
   const [tab, setTab] = useState('direct')
 
+  const { buySeedOnChain, contractsDeployed, txHash, isPending, isConfirming } = useGladeContract()
+
   if (!showPlantMenu) return null
 
   const crop = CROP_TYPES[selectedCropType]
   const canAfford = usdcBalance >= crop.costUSD
-  const handleBuy = () => { if (canAfford && selectedPlotId) buySeed(selectedPlotId, selectedCropType) }
+
+  const handleBuy = () => {
+    if (!canAfford || !selectedPlotId) return
+    buySeed(selectedPlotId, selectedCropType)
+    if (contractsDeployed) {
+      buySeedOnChain(SEED_TYPE_MAP[selectedCropType] || 0)
+    }
+  }
 
   const plantableCards = seedCards.filter(c => {
     const cropKey = c.isHybrid ? (c.parentStrain || 'coffee') : c.strainKey
@@ -63,10 +75,26 @@ const PlantMenu = () => {
               <div style={{ color: '#2ecc71' }}>Split: ${crop.rwaAllocation} RWA | ${crop.gameAllocation} Game</div>
               <div style={{ color: '#888', marginTop: 4 }}>{crop.rwaDescription}</div>
             </div>
+            {contractsDeployed && (
+              <div style={{ fontSize: 11, color: '#3498db', textAlign: 'center', marginBottom: 8, fontFamily: 'Space Mono' }}>
+                ⛓ On-chain TX via Avalanche Fuji
+              </div>
+            )}
+            {txHash && (
+              <div style={{ fontSize: 11, textAlign: 'center', marginBottom: 8, fontFamily: 'Space Mono' }}>
+                {isConfirming ? (
+                  <span style={{ color: '#f39c12' }}>⏳ Confirmando TX...</span>
+                ) : (
+                  <span style={{ color: '#2ecc71' }}>
+                    ✅ TX: <a href={`https://testnet.snowtrace.io/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: '#3498db' }}>{txHash.slice(0, 10)}...{txHash.slice(-6)}</a>
+                  </span>
+                )}
+              </div>
+            )}
             <div className="plant-menu-actions">
               <button className="btn-cancel" onClick={closePlantMenu}>Cancelar</button>
-              <button className="btn-plant" onClick={handleBuy} disabled={!canAfford}>
-                {canAfford ? `Invertir $${crop.costUSD}` : `Necesitas $${crop.costUSD}`}
+              <button className="btn-plant" onClick={handleBuy} disabled={!canAfford || isPending}>
+                {isPending ? 'Firmando...' : canAfford ? `Invertir $${crop.costUSD}` : `Necesitas $${crop.costUSD}`}
               </button>
             </div>
           </>

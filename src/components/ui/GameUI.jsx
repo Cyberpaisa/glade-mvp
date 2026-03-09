@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { useWallet } from '../../hooks/useWallet'
+import { useGladeContract } from '../../hooks/useGladeContract'
 
 const GameUI = () => {
   const usdcBalance = useGameStore(s => s.usdcBalance)
   const walletConnected = useGameStore(s => s.walletConnected)
-  const walletAddress = useGameStore(s => s.walletAddress)
   const rwaPoolTotal = useGameStore(s => s.rwaPoolTotal)
   const gamePoolTotal = useGameStore(s => s.gamePoolTotal)
   const accumulatedYield = useGameStore(s => s.accumulatedYield)
@@ -19,11 +21,23 @@ const GameUI = () => {
   const toggleLab = useGameStore(s => s.toggleLab)
   const reopenTutorial = useGameStore(s => s.reopenTutorial)
 
+  const { address, isConnected, chain, balance, connectWallet, disconnect, isPending } = useWallet()
+  const { claimFaucet, contractsDeployed, isPending: isFaucetPending, txHash } = useGladeContract()
+
+  useEffect(() => {
+    if (isConnected && address) {
+      setWalletConnected(address)
+    } else if (!isConnected && walletConnected) {
+      setWalletDisconnected()
+    }
+  }, [isConnected, address])
+
   const handleWalletClick = () => {
-    if (walletConnected) { setWalletDisconnected() }
-    else { const addr = '0x' + Array.from({length: 40}, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join(''); setWalletConnected(addr) }
+    if (isConnected) disconnect()
+    else connectWallet()
   }
-  const shortenAddr = (a) => a ? `${a.slice(0,6)}...${a.slice(-4)}` : ''
+
+  const shortenAddr = (a) => a ? `${a.slice(0, 6)}...${a.slice(-4)}` : ''
 
   return (
     <div className="game-hud">
@@ -79,10 +93,36 @@ const GameUI = () => {
         )}
       </div>
       <div className="hud-right">
-        <button className={`wallet-btn ${walletConnected ? 'connected' : ''}`} onClick={handleWalletClick}>
-          {walletConnected ? <><span>🟢</span><span>{shortenAddr(walletAddress)}</span></> : <><span>🔗</span><span>Connect Wallet</span></>}
+        <button className={`wallet-btn ${isConnected ? 'connected' : ''}`} onClick={handleWalletClick} disabled={isPending}>
+          {isPending ? (
+            <span>Connecting...</span>
+          ) : isConnected ? (
+            <><span>🟢</span><span>{shortenAddr(address)}</span></>
+          ) : (
+            <><span>🔗</span><span>Connect Wallet</span></>
+          )}
         </button>
-        <div className="avax-badge">Avalanche C-Chain | Fuji Testnet</div>
+        {isConnected && (
+          <div style={{ fontSize: 11, color: '#a8e6cf', textAlign: 'center', marginTop: 4, fontFamily: 'Space Mono' }}>
+            {balance} AVAX
+          </div>
+        )}
+        {isConnected && contractsDeployed && (
+          <button className="wallet-btn" onClick={claimFaucet} disabled={isFaucetPending}
+            style={{ marginTop: 6, fontSize: 12, padding: '6px 12px' }}>
+            {isFaucetPending ? '⏳ Claiming...' : '🚰 Claim 100 gUSD'}
+          </button>
+        )}
+        {txHash && (
+          <div style={{ fontSize: 10, color: '#2ecc71', textAlign: 'center', marginTop: 4, fontFamily: 'Space Mono' }}>
+            <a href={`https://testnet.snowtrace.io/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: '#3498db' }}>
+              View TX ↗
+            </a>
+          </div>
+        )}
+        <div className="avax-badge">
+          {isConnected && chain ? `◆ ${chain.name}` : 'Avalanche C-Chain | Fuji Testnet'}
+        </div>
         <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginTop: 4, fontFamily: 'Space Mono' }}>75% RWA | 25% Game</div>
       </div>
     </div>

@@ -1,29 +1,89 @@
-import { useReadContract, useWriteContract, useAccount } from 'wagmi'
-
-// ABI stubs — replace with actual ABI after compile
-const GLADE_FARM_ABI = [
-  { name: 'buySeed', type: 'function', inputs: [{ name: 'seedTypeId', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
-  { name: 'claimYield', type: 'function', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-  { name: 'isReady', type: 'function', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ type: 'bool' }], stateMutability: 'view' },
-  { name: 'getEconomyStats', type: 'function', inputs: [], outputs: [{ name: 'rwa', type: 'uint256' }, { name: 'game', type: 'uint256' }, { name: 'seeds', type: 'uint256' }], stateMutability: 'view' },
-]
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { parseEther } from 'viem'
 
 const GLADE_TOKEN_ABI = [
-  { name: 'claimFaucet', type: 'function', inputs: [], outputs: [], stateMutability: 'nonpayable' },
-  { name: 'balanceOf', type: 'function', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-  { name: 'approve', type: 'function', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }], stateMutability: 'nonpayable' },
+  {
+    inputs: [],
+    name: 'claimFaucet',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'account', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    name: 'approve',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ]
 
-// Replace with deployed addresses
-const FARM_ADDRESS = '0x0000000000000000000000000000000000000000'
-const TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000'
+const GLADE_FARM_ABI = [
+  {
+    inputs: [{ name: 'seedTypeId', type: 'uint256' }],
+    name: 'buySeed',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    name: 'claimYield',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getEconomyStats',
+    outputs: [
+      { name: 'rwa', type: 'uint256' },
+      { name: 'game', type: 'uint256' },
+      { name: 'seeds', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+]
+
+const TOKEN_ADDRESS = import.meta.env.VITE_GLADE_TOKEN_ADDRESS || null
+const FARM_ADDRESS = import.meta.env.VITE_GLADE_FARM_ADDRESS || null
 
 export function useGladeContract() {
-  const { address } = useAccount()
-  const { writeContractAsync } = useWriteContract()
+  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
-  const buySeed = async (seedTypeId) => {
-    return writeContractAsync({
+  const contractsDeployed = !!(TOKEN_ADDRESS && FARM_ADDRESS)
+
+  const claimFaucet = () => {
+    if (!TOKEN_ADDRESS) return
+    writeContract({
+      address: TOKEN_ADDRESS,
+      abi: GLADE_TOKEN_ABI,
+      functionName: 'claimFaucet',
+    })
+  }
+
+  const approveToken = (amount) => {
+    if (!TOKEN_ADDRESS || !FARM_ADDRESS) return
+    writeContract({
+      address: TOKEN_ADDRESS,
+      abi: GLADE_TOKEN_ABI,
+      functionName: 'approve',
+      args: [FARM_ADDRESS, parseEther(amount.toString())],
+    })
+  }
+
+  const buySeedOnChain = (seedTypeId) => {
+    if (!FARM_ADDRESS) return
+    writeContract({
       address: FARM_ADDRESS,
       abi: GLADE_FARM_ABI,
       functionName: 'buySeed',
@@ -31,8 +91,9 @@ export function useGladeContract() {
     })
   }
 
-  const claimYield = async (tokenId) => {
-    return writeContractAsync({
+  const claimYieldOnChain = (tokenId) => {
+    if (!FARM_ADDRESS) return
+    writeContract({
       address: FARM_ADDRESS,
       abi: GLADE_FARM_ABI,
       functionName: 'claimYield',
@@ -40,13 +101,16 @@ export function useGladeContract() {
     })
   }
 
-  const claimFaucet = async () => {
-    return writeContractAsync({
-      address: TOKEN_ADDRESS,
-      abi: GLADE_TOKEN_ABI,
-      functionName: 'claimFaucet',
-    })
+  return {
+    contractsDeployed,
+    claimFaucet,
+    approveToken,
+    buySeedOnChain,
+    claimYieldOnChain,
+    txHash: hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
   }
-
-  return { buySeed, claimYield, claimFaucet }
 }
