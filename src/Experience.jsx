@@ -1,19 +1,45 @@
-import React from 'react'
+import { useMemo } from 'react'
 import { Sky, OrbitControls } from '@react-three/drei'
 import { Physics, usePlane } from '@react-three/cannon'
 import FarmPlot from './components/environment/FarmPlot'
 import Trees from './components/environment/Trees'
 import Decorations from './components/environment/Decorations'
 import FarmSign from './components/environment/FarmSign'
+import { FloatingParticles, Butterflies } from './components/environment/Effects'
 import { useGameStore } from './store/gameStore'
 
 function Ground() {
   const [ref] = usePlane(() => ({ rotation: [-Math.PI / 2, 0, 0], position: [0, 0, 0], type: 'Static' }))
+  const grassPatches = useMemo(() =>
+    Array.from({ length: 30 }, (_, i) => ({
+      key: i,
+      position: [(Math.random() - 0.5) * 40, 0.006, (Math.random() - 0.5) * 40],
+      rotation: [- Math.PI / 2, Math.random() * Math.PI, 0],
+      radius: 0.5 + Math.random() * 1.5,
+      hue: 110 + Math.random() * 20,
+      sat: 50 + Math.random() * 20,
+      light: 25 + Math.random() * 15,
+    })), [])
+
   return (
-    <mesh ref={ref} receiveShadow>
-      <planeGeometry args={[80, 80]} />
-      <meshStandardMaterial color="#3d6b35" />
-    </mesh>
+    <group>
+      <mesh ref={ref} receiveShadow>
+        <planeGeometry args={[80, 80, 40, 40]} />
+        <meshStandardMaterial color="#3d6b35" roughness={0.95} />
+      </mesh>
+      {/* Dirt path to farm */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 4]} receiveShadow>
+        <planeGeometry args={[2, 12]} />
+        <meshStandardMaterial color="#a07828" roughness={1} />
+      </mesh>
+      {/* Grass patches */}
+      {grassPatches.map(g => (
+        <mesh key={g.key} rotation={g.rotation} position={g.position} receiveShadow>
+          <circleGeometry args={[g.radius, 6]} />
+          <meshStandardMaterial color={`hsl(${g.hue}, ${g.sat}%, ${g.light}%)`} roughness={1} />
+        </mesh>
+      ))}
+    </group>
   )
 }
 
@@ -54,6 +80,7 @@ const Experience = () => {
   const plots = useGameStore(s => s.plots)
   return (
     <>
+      <fog attach="fog" args={['#87CEEB', 25, 60]} />
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 15, 8]} intensity={1.2} color="#FFF5E0" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-far={50} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
       <directionalLight position={[-5, 8, -5]} intensity={0.3} color="#87CEEB" />
@@ -67,6 +94,8 @@ const Experience = () => {
       <Trees />
       <Decorations />
       <FarmSign />
+      <FloatingParticles count={40} area={25} />
+      <Butterflies count={4} />
       <OrbitControls makeDefault maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 6} minDistance={8} maxDistance={30} target={[0, 0, 0]} enablePan={false} />
     </>
   )
