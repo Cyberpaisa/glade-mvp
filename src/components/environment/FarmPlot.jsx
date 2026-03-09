@@ -1,20 +1,25 @@
-import React, { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { useGameStore, CROP_TYPES } from '../../store/gameStore'
+import { useGameStore, CROP_TYPES, WEATHER_TYPES } from '../../store/gameStore'
+import { RARITY } from '../../store/seedCards'
 
-function PlantMesh({ plantType, stage, plantedAt }) {
+function PlantMesh({ plantType, stage, plantedAt, card }) {
   const meshRef = useRef()
   const config = CROP_TYPES[plantType]
+  const glows = card?.glows
+
   useFrame((state) => {
     if (!meshRef.current) return
     if (stage !== 'ready') meshRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 2 + plantedAt) * 0.05
     if (stage === 'ready') meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 3) * 0.05 + 0.55
   })
+
   const scales = { seed: [0.15, 0.1, 0.15], sprout: [0.2, 0.4, 0.2], growing: [0.35, 0.7, 0.35], ready: [0.5, 1.0, 0.5] }
   const heights = { seed: 0.05, sprout: 0.2, growing: 0.4, ready: 0.55 }
   const scale = scales[stage] || scales.seed
   const height = heights[stage] || 0.1
+
   return (
     <group>
       {stage !== 'seed' && (
@@ -26,8 +31,8 @@ function PlantMesh({ plantType, stage, plantedAt }) {
       <mesh ref={meshRef} position={[0, height, 0]} castShadow>
         {stage === 'seed' && <><sphereGeometry args={[0.08, 8, 8]} /><meshStandardMaterial color="#8B6914" /></>}
         {stage === 'sprout' && <><coneGeometry args={[scale[0], scale[1], 6]} /><meshStandardMaterial color="#4CAF50" /></>}
-        {stage === 'growing' && <><sphereGeometry args={[scale[0], 8, 8]} /><meshStandardMaterial color={config.color} emissive={config.color} emissiveIntensity={0.05} /></>}
-        {stage === 'ready' && <><dodecahedronGeometry args={[scale[0], 0]} /><meshStandardMaterial color={config.color} emissive={config.color} emissiveIntensity={0.15} /></>}
+        {stage === 'growing' && <><sphereGeometry args={[scale[0], 8, 8]} /><meshStandardMaterial color={config.color} emissive={config.color} emissiveIntensity={glows ? 0.3 : 0.05} /></>}
+        {stage === 'ready' && <><dodecahedronGeometry args={[scale[0], 0]} /><meshStandardMaterial color={config.color} emissive={config.color} emissiveIntensity={glows ? 0.5 : 0.15} /></>}
       </mesh>
       {(stage === 'growing' || stage === 'ready') && (
         <>
@@ -41,17 +46,27 @@ function PlantMesh({ plantType, stage, plantedAt }) {
           <meshStandardMaterial color="#f1c40f" emissive="#f1c40f" emissiveIntensity={0.5} transparent opacity={0.6} />
         </mesh>
       )}
+      {glows && stage !== 'seed' && (
+        <pointLight position={[0, height, 0]} color={config.color} intensity={0.5} distance={3} />
+      )}
     </group>
   )
 }
 
-function GrowthProgress({ plantType, plantedAt }) {
+function GrowthProgress({ plantType, plantedAt, card }) {
   const config = CROP_TYPES[plantType]
+  const weather = useGameStore(s => s.weather)
   const [progress, setProgress] = useState(0)
+
   useFrame(() => {
     const elapsed = (Date.now() - plantedAt) / 1000
-    setProgress(Math.min(elapsed / config.growthTime, 1))
+    const baseGrowth = card ? card.growthTime : config.growthTime
+    const isWeatherImmune = card?.traits?.includes('allWeather')
+    const growthMod = isWeatherImmune ? 1.0 : WEATHER_TYPES[weather].growthMod
+    const adjustedTime = baseGrowth / growthMod
+    setProgress(Math.min(elapsed / adjustedTime, 1))
   })
+
   if (progress >= 1) return null
   return (
     <Html position={[0, 1.5, 0]} center>
@@ -63,15 +78,31 @@ function GrowthProgress({ plantType, plantedAt }) {
   )
 }
 
+function HealthBar({ health }) {
+  if (health >= 100) return null
+  return (
+    <Html position={[0, 1.2, 0]} center>
+      <div style={{ width: 50, height: 4, background: 'rgba(0,0,0,0.5)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ width: `${health}%`, height: '100%', background: health > 50 ? '#2ecc71' : health > 25 ? '#f39c12' : '#e74c3c', borderRadius: 2 }} />
+      </div>
+    </Html>
+  )
+}
+
 const FarmPlot = ({ plot }) => {
   const [hovered, setHovered] = useState(false)
   const selectPlot = useGameStore(s => s.selectPlot)
   const harvestPlant = useGameStore(s => s.harvestPlant)
+
   const handleClick = (e) => {
     e.stopPropagation()
     if (plot.plant?.stage === 'ready') harvestPlant(plot.id)
     else if (!plot.plant) selectPlot(plot.id)
   }
+
+  const cardRarity = plot.plant?.card?.rarity
+  const rarityColor = cardRarity ? RARITY[cardRarity]?.border : null
+
   return (
     <group position={plot.position}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow onClick={handleClick}
@@ -82,7 +113,7 @@ const FarmPlot = ({ plot }) => {
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
         <ringGeometry args={[1.25, 1.35, 4]} />
-        <meshStandardMaterial color={hovered ? '#a07828' : '#8B6914'} />
+        <meshStandardMaterial color={rarityColor || (hovered ? '#a07828' : '#8B6914')} emissive={rarityColor || '#000000'} emissiveIntensity={rarityColor ? 0.3 : 0} />
       </mesh>
       {[-0.5, 0, 0.5].map((z, i) => (
         <mesh key={i} position={[0, 0.03, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -91,8 +122,9 @@ const FarmPlot = ({ plot }) => {
       ))}
       {plot.plant && (
         <>
-          <PlantMesh plantType={plot.plant.type} stage={plot.plant.stage} plantedAt={plot.plant.plantedAt} />
-          <GrowthProgress plantType={plot.plant.type} plantedAt={plot.plant.plantedAt} />
+          <PlantMesh plantType={plot.plant.type} stage={plot.plant.stage} plantedAt={plot.plant.plantedAt} card={plot.plant.card} />
+          <GrowthProgress plantType={plot.plant.type} plantedAt={plot.plant.plantedAt} card={plot.plant.card} />
+          <HealthBar health={plot.plant.health} />
         </>
       )}
       {hovered && !plot.plant && (
@@ -108,4 +140,5 @@ const FarmPlot = ({ plot }) => {
     </group>
   )
 }
+
 export default FarmPlot
