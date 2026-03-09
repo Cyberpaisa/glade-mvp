@@ -2,13 +2,14 @@
 
 **Where Digital Farming Becomes Real Yield**
 
-3D farming game on Avalanche C-Chain with economy backed by Real World Assets (RWA). Plant seeds, collect cards, hybridize, defend from pests, and earn real yield.
+3D farming game on Avalanche C-Chain where every seed you plant is backed by a Real World Asset. Plant, collect cards, hybridize, defend from pests, stake, and earn real yield.
 
 [![Play Now](https://img.shields.io/badge/Play_Now-glade--mvp.vercel.app-2ecc71?style=for-the-badge)](https://glade-mvp.vercel.app)
 
 [![Avalanche](https://img.shields.io/badge/Avalanche-C--Chain-E84142?style=flat-square&logo=avalanche&logoColor=white)](https://www.avax.network/)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8.20-363636?style=flat-square&logo=solidity)](https://soliditylang.org/)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.27-363636?style=flat-square&logo=solidity)](https://soliditylang.org/)
 [![React](https://img.shields.io/badge/React_Three_Fiber-3D-61DAFB?style=flat-square&logo=react)](https://docs.pmnd.rs/react-three-fiber)
+[![wagmi](https://img.shields.io/badge/wagmi-Web3-purple?style=flat-square)](https://wagmi.sh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 ---
@@ -17,10 +18,20 @@
 
 GLADE is a browser-based 3D farming game where every seed you plant is backed by a real-world asset. When you buy a Coffee seed for $10, the smart contract automatically splits the payment:
 
-- **75% ($7.50)** goes to the RWA Pool (invested in real coffee farms, vineyards, solar panels)
-- **25% ($2.50)** stays in the Game Pool (funds in-game economy, rewards, packs)
+- **75% ($7.50)** → RWA Pool (invested in real coffee farms, vineyards, solar panels)
+- **25% ($2.50)** → Game Pool (in-game economy, rewards, packs, staking)
 
 Yields come from actual asset returns — not from new player deposits. This is not a Ponzi.
+
+> Built for [Avalanche Build Games 2026](https://build.avax.network/build-games) ($1M prize pool)
+
+---
+
+## Screenshots
+
+| Farm View | Card Collection | Hybrid Lab |
+|-----------|----------------|------------|
+| 3D farm with 9 plots, day/night cycle, weather effects | Seed cards with rarities, traits, staking | Combine 2 cards to create hybrids |
 
 ---
 
@@ -31,6 +42,7 @@ Yields come from actual asset returns — not from new player deposits. This is 
 1. **Open the game** at [glade-mvp.vercel.app](https://glade-mvp.vercel.app)
 2. **Read the tutorial** — it appears on first load (click `?` in the HUD to reopen)
 3. **You start with $100 gUSD** — this is testnet play money
+4. **Connect MetaMask** (optional) — click "Connect Wallet" for on-chain features
 
 ### Your First Farm
 
@@ -61,11 +73,13 @@ Yields come from actual asset returns — not from new player deposits. This is 
 | **Weather** | Top-left HUD | Sun (1x), Rain (1.5x growth), Drought (0.5x), Storm (damages plants) |
 | **Pests** | Click bugs on farm | Kill pests before they damage plants, earn $0.10-$0.25 |
 | **Plant with Card** | Plot menu > "Usar Carta" tab | Use a card to boost your planted crop's yield |
+| **Wallet** | Top-right HUD | Connect MetaMask, see AVAX balance, on-chain TX |
+| **Faucet** | Top-right (when wallet connected) | Claim 100 gUSD from smart contract |
 
 ### Card Rarities
 
-| Rarity | Pack Odds (Basic) | Pack Odds (Premium) | Staking Yield |
-|--------|-------------------|--------------------| --------------|
+| Rarity | Basic Pack ($2) | Premium Pack ($6) | Staking Yield |
+|--------|-----------------|-------------------|---------------|
 | Common | 85% | 60% | — |
 | Rare | 12% | 30% | 1% per tick |
 | Epic | 2.5% | 8% | 3% per tick |
@@ -99,11 +113,11 @@ Yields come from actual asset returns — not from new player deposits. This is 
 ## RWA Crop Economics
 
 | Seed | Cost | RWA (75%) | Game (25%) | Monthly Yield | APY | Growth (demo) |
-|------|------|-----------|------------|--------------|-----|---------------|
-| Coffee | $10 | $7.50 | $2.50 | $0.80 | ~9.6% | 30s |
-| Cacao | $15 | $11.25 | $3.75 | $1.20 | ~9.6% | 35s |
-| Vineyard | $25 | $18.75 | $6.25 | $2.10 | ~10.1% | 45s |
-| Solar Panel | $50 | $37.50 | $12.50 | $4.50 | ~10.8% | 60s |
+|------|------|-----------|------------|---------------|-----|---------------|
+| ☕ Coffee | $10 | $7.50 | $2.50 | $0.80 | ~9.6% | 30s |
+| 🫘 Cacao | $15 | $11.25 | $3.75 | $1.20 | ~9.6% | 35s |
+| 🍇 Vineyard | $25 | $18.75 | $6.25 | $2.10 | ~10.1% | 45s |
+| ☀️ Solar Panel | $50 | $37.50 | $12.50 | $4.50 | ~10.8% | 60s |
 
 Growth times are accelerated for demo. Real yields based on underlying asset performance.
 
@@ -113,7 +127,39 @@ Growth times are accelerated for demo. Real yields based on underlying asset per
 - **Card packs** ($2/$6) go 100% to Game Pool
 - **Pest rewards** ($0.10-$0.25) come from Game Pool
 - **Staking rewards** come from Game Pool
-- **Hybridization cost** ($3 base * rarity) goes to Game Pool
+- **Hybridization cost** ($3 base * rarity multiplier) goes to Game Pool
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│              BROWSER (React + Vite)              │
+│                                                  │
+│  ┌────────────┐  ┌──────────┐  ┌─────────────┐  │
+│  │ Three.js   │  │ Zustand  │  │ wagmi/viem  │  │
+│  │ R3F + Drei │  │ Store    │  │ Wallet +    │  │
+│  │ 3D World   │  │ Game     │  │ Contract    │  │
+│  │            │  │ State    │  │ Hooks       │  │
+│  └────────────┘  └──────────┘  └──────┬──────┘  │
+│                                       │          │
+└───────────────────────────────────────┼──────────┘
+                                        │ JSON-RPC
+┌───────────────────────────────────────┼──────────┐
+│         AVALANCHE C-CHAIN (Fuji 43113)│          │
+│                                       ▼          │
+│  ┌──────────────────┐  ┌────────────────────┐    │
+│  │ GladeToken.sol   │  │ GladeFarm.sol      │    │
+│  │ ERC-20 "gUSD"    │  │ ERC-721 + Game     │    │
+│  │ - claimFaucet()  │  │ - buySeed()        │    │
+│  │ - balanceOf()    │  │   → 75% to rwaPool │    │
+│  │ - approve()      │  │   → 25% to gamePool│    │
+│  │                  │  │ - claimYield()      │    │
+│  │                  │  │ - getEconomyStats() │    │
+│  └──────────────────┘  └────────────────────┘    │
+└──────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -134,13 +180,30 @@ Open [http://localhost:5173](http://localhost:5173)
 
 ```
 glade-mvp/
+├── CLAUDE.md                       # AI context (Claude Code auto-reads)
+├── AI_CONTEXT.md                   # Universal AI context (paste into any AI)
+├── AGENTS.md                       # VSCode Copilot/Cline agents context
+├── .cursorrules                    # Cursor AI auto-reads
+├── .github/copilot-instructions.md # GitHub Copilot auto-reads
+├── .windsurfrules                  # Windsurf AI auto-reads
+│
 ├── src/
-│   ├── contracts/                  # Solidity smart contracts
-│   │   ├── GladeToken.sol          # ERC-20 gUSD stablecoin
-│   │   └── GladeFarm.sol           # ERC-721 + 75/25 game logic
+│   ├── main.jsx                    # Entry: wraps App in WalletProvider
+│   ├── App.jsx                     # Canvas + UI overlays + game loops
+│   ├── Experience.jsx              # 3D scene manager
+│   ├── styles.css                  # All UI styles (CSS variables)
+│   │
+│   ├── store/
+│   │   ├── gameStore.js            # Zustand state (economy, plots, weather, cards)
+│   │   └── seedCards.js            # Card generation, hybridization, traits
+│   │
+│   ├── contracts/
+│   │   ├── GladeToken.sol          # ERC-20 gUSD stablecoin with faucet
+│   │   └── GladeFarm.sol           # ERC-721 + buySeed(75/25) + claimYield
+│   │
 │   ├── components/
 │   │   ├── environment/            # 3D scene components
-│   │   │   ├── FarmPlot.jsx        # Interactive farm plots with health/growth
+│   │   │   ├── FarmPlot.jsx        # Interactive plots with health/growth
 │   │   │   ├── Trees.jsx           # Procedural trees
 │   │   │   ├── Decorations.jsx     # Barn, windmill, solar panels
 │   │   │   ├── FarmSign.jsx        # Entrance sign
@@ -150,8 +213,8 @@ glade-mvp/
 │   │   │   ├── Pests.jsx           # 3D pest meshes, click-to-kill
 │   │   │   └── WeatherSystem.jsx   # Rain, storms, lightning
 │   │   ├── ui/                     # HUD and menus
-│   │   │   ├── GameUI.jsx          # Main HUD (balance, buttons, stats)
-│   │   │   ├── PlantMenu.jsx       # Seed purchase + plant-with-card
+│   │   │   ├── GameUI.jsx          # Main HUD (balance, wallet, stats)
+│   │   │   ├── PlantMenu.jsx       # Seed purchase + plant-with-card + on-chain TX
 │   │   │   ├── YieldDashboard.jsx  # Portfolio tracker + staking
 │   │   │   ├── CardCollection.jsx  # Card collection, staking, shop
 │   │   │   ├── HybridLab.jsx       # Card hybridization lab
@@ -160,34 +223,32 @@ glade-mvp/
 │   │   │   ├── Tutorial.jsx        # 9-step onboarding
 │   │   │   └── Notifications.jsx   # Toast notifications
 │   │   └── web3/
-│   │       └── WalletProvider.jsx  # RainbowKit + wagmi config
-│   ├── hooks/
-│   │   └── useGladeContract.js     # Contract interaction hooks
-│   ├── store/
-│   │   ├── gameStore.js            # Zustand state (economy, plots, weather, cards)
-│   │   └── seedCards.js            # Card generation, hybridization, traits
-│   ├── App.jsx                     # Root component + game loops
-│   ├── Experience.jsx              # 3D scene manager
-│   └── main.jsx                    # Entry point
+│   │       └── WalletProvider.jsx  # wagmi + QueryClient + Fuji chain
+│   │
+│   └── hooks/
+│       ├── useWallet.js            # Wallet connect/disconnect/balance
+│       └── useGladeContract.js     # Contract calls (faucet, buySeed, claimYield)
+│
 ├── scripts/
-│   └── deploy.js                   # Hardhat deployment
+│   └── deploy.js                   # Hardhat deployment to Fuji
 ├── docs/
-│   ├── architecture.md             # System design
-│   └── economy-whitepaper.md       # Economy model & tokenomics
-└── hardhat.config.cjs
+│   ├── architecture.md             # System design + data flow
+│   └── economy-whitepaper.md       # RWA model + card economy
+├── hardhat.config.cjs              # Hardhat config (Fuji testnet)
+└── .env.example                    # Template for environment variables
 ```
 
 ### Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| 3D Engine | Three.js + React Three Fiber |
+| 3D Engine | Three.js + React Three Fiber + Drei |
 | UI | React 18 |
 | State | Zustand |
 | Physics | @react-three/cannon |
-| Blockchain | Avalanche C-Chain (Fuji) |
-| Contracts | Solidity 0.8.20 + OpenZeppelin |
-| Web3 | wagmi + viem + RainbowKit |
+| Blockchain | Avalanche C-Chain (Fuji Testnet, 43113) |
+| Contracts | Solidity 0.8.27 + OpenZeppelin 5.x |
+| Web3 | wagmi + viem (injected connector) |
 | Build | Vite |
 | Deploy | Vercel (frontend), Hardhat (contracts) |
 
@@ -210,41 +271,72 @@ glade-mvp/
 #### GladeToken (ERC-20)
 - Testnet stablecoin (gUSD) simulating USDC
 - Built-in faucet: claim 100 gUSD every hour
+- Solidity 0.8.27 + OpenZeppelin ERC20 + Ownable
 
 #### GladeFarm (ERC-721 + Game Logic)
 - `buySeed()` — Enforces 75/25 split on-chain, mints NFT
 - `claimYield()` — Harvests after growth period
 - `getEconomyStats()` — Returns RWA/game pool totals
+- 4 seed types initialized in constructor
 
 #### Compile & Deploy
 
 ```bash
+# Compile
 npx hardhat compile --config hardhat.config.cjs
+
+# Deploy to Fuji (requires PRIVATE_KEY in .env)
 npx hardhat run scripts/deploy.js --network fuji --config hardhat.config.cjs
 ```
 
 ### Environment Variables
 
 ```env
-VITE_WALLET_CONNECT_PROJECT_ID=your_project_id
-VITE_GLADE_TOKEN_ADDRESS=deployed_token_address
-VITE_GLADE_FARM_ADDRESS=deployed_farm_address
+# Contract deployment (MetaMask private key for Fuji)
+PRIVATE_KEY=your_private_key_here
+
+# Contract addresses (set after deploying)
+VITE_GLADE_TOKEN_ADDRESS=0x_deployed_token_address
+VITE_GLADE_FARM_ADDRESS=0x_deployed_farm_address
 ```
+
+### AI Context Files
+
+This repo includes context files for every major AI coding assistant:
+
+| File | AI Tool | Auto-read? |
+|------|---------|-----------|
+| `CLAUDE.md` | Claude Code | Yes |
+| `AI_CONTEXT.md` | Any AI (paste manually) | No |
+| `AGENTS.md` | VSCode Copilot, Cline, Aider | Yes |
+| `.cursorrules` | Cursor AI | Yes |
+| `.github/copilot-instructions.md` | GitHub Copilot | Yes |
+| `.windsurfrules` | Windsurf AI | Yes |
 
 ---
 
 ## Why Avalanche?
 
-- Sub-second finality for real-time gaming
-- Low fees ($0.01/tx) make micro-transactions viable
-- Growing RWA ecosystem (Securitize, Ondo, etc.)
-- Subnet/L1 capability for dedicated game chain
-- EVM compatible — standard Solidity tooling
+- **Sub-second finality** for real-time gaming
+- **Low fees** ($0.01/tx) make micro-transactions viable
+- **Growing RWA ecosystem** (Securitize, Ondo, Avalanche Evergreen)
+- **Subnet/L1 capability** for dedicated game chain
+- **EVM compatible** — standard Solidity tooling
 
 ## Documentation
 
 - [Architecture](docs/architecture.md) — System design, contract details, data flow
 - [Economy Whitepaper](docs/economy-whitepaper.md) — RWA model, yield mechanics, card economy
+- [AI Context](AI_CONTEXT.md) — Full project context for any AI assistant
+
+## Roadmap
+
+| Stage | Date | Status | Focus |
+|-------|------|--------|-------|
+| 1. Idea | Feb 25 | ✅ Done | 1-min pitch video |
+| 2. MVP | Mar 9 | ✅ Done | Functional prototype + wallet + contracts |
+| 3. GTM | Mar 19 | Upcoming | Full on-chain, ERC-1155, marketplace, Chainlink |
+| 4. Finals | Mar 27 | Upcoming | Live showcase, polished UX, L1 proposal |
 
 ## Security
 
@@ -252,7 +344,15 @@ Smart contracts are **not audited**. This is a prototype for Avalanche Build Gam
 
 ## Team
 
-Built by [@Cyber_paisa](https://github.com/Cyberpaisa) for [Avalanche Build Games 2026](https://build.avax.network/build-games).
+| Role | Person | Focus |
+|------|--------|-------|
+| Lead Dev / Web3 | Juan ([@Cyber_paisa](https://github.com/Cyberpaisa)) | Smart contracts, integration, architecture |
+| Game Designer | Daniel | Economy design, coordination, documentation |
+| Game Dev | Anthony | Visual/3D, Unity migration (Stage 3+) |
+| Web3 Dev | Josue/Kevin | Smart contracts, testing |
+| Backend | John | API, deployment, infrastructure |
+
+Built for [Avalanche Build Games 2026](https://build.avax.network/build-games)
 
 ## License
 
