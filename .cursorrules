@@ -1,0 +1,16 @@
+# .cursorrules — Cursor AI Context for GLADE
+# Read CLAUDE.md for full project context.
+# This file exists so Cursor AI auto-loads project intelligence.
+
+You are working on GLADE — a browser-based 3D farming game on Avalanche C-Chain
+with RWA-backed economy (75/25 split). Read CLAUDE.md in the project root for
+complete architecture, status, economy model, file structure, and instructions.
+
+Key rules:
+- The 75/25 RWA split is the core innovation. Never change it without approval.
+- Stack: React Three Fiber + Zustand + wagmi + Vite + Hardhat + Solidity 0.8.20
+- Chain: Avalanche Fuji Testnet (43113)
+- This is an MVP for a $1M competition. Ship fast, don't overengineer.
+- gameStore.js is the brain. Check it first for any game logic questions.
+- Smart contract changes need recompile: npx hardhat compile --config hardhat.config.cjs
+- Frontend env vars MUST start with VITE_

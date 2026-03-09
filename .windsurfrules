@@ -1,0 +1,4 @@
+# Read CLAUDE.md in the project root for complete project context.
+# GLADE: 3D farming game on Avalanche with RWA-backed 75/25 economy split.
+# Stack: React Three Fiber + Zustand + wagmi + Vite + Hardhat + Solidity
+# Chain: Avalanche Fuji Testnet (43113)
