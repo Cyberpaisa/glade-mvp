@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
-import { RARITY } from '../../store/seedCards'
 import SeedCard from './SeedCard'
 
 const CardCollection = () => {
@@ -16,6 +15,19 @@ const CardCollection = () => {
   const unstakeCard = useGameStore(s => s.unstakeCard)
   const [tab, setTab] = useState('cards')
   const [selectedCard, setSelectedCard] = useState(null)
+  const [shopMsg, setShopMsg] = useState(null)
+
+  const handleBuyPack = useCallback((tier) => {
+    const cost = tier === 'basic' ? 2 : 6
+    if (usdcBalance < cost) {
+      setShopMsg({ type: 'error', text: `Necesitas $${cost} gUSD. Tu balance: $${usdcBalance.toFixed(2)}` })
+    } else {
+      buySeedPack(tier)
+      const count = tier === 'basic' ? 1 : 3
+      setShopMsg({ type: 'success', text: `Compraste ${count} carta${count > 1 ? 's' : ''}! Ve a la tab "Cards" para verla${count > 1 ? 's' : ''}.` })
+    }
+    setTimeout(() => setShopMsg(null), 3500)
+  }, [usdcBalance, buySeedPack])
 
   if (!showCollection) return null
 
@@ -93,15 +105,31 @@ const CardCollection = () => {
 
         {tab === 'shop' && (
           <div className="collection-body">
+            <div style={{ background: 'rgba(46,204,113,0.08)', border: '1px solid rgba(46,204,113,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, lineHeight: 1.5 }}>
+              <strong style={{ color: '#2ecc71' }}>Como funciona:</strong>
+              <span style={{ color: '#ccc' }}> Compra un pack para obtener cartas con rareza aleatoria. Las cartas mejoran tu yield al plantar. Cartas Rare+ se pueden stakear para ganar gUSD pasivo. Haz click en un pack para comprarlo.</span>
+            </div>
+            {shopMsg && (
+              <div style={{
+                background: shopMsg.type === 'success' ? 'rgba(46,204,113,0.15)' : 'rgba(231,76,60,0.15)',
+                border: `1px solid ${shopMsg.type === 'success' ? 'rgba(46,204,113,0.5)' : 'rgba(231,76,60,0.5)'}`,
+                color: shopMsg.type === 'success' ? '#2ecc71' : '#e74c3c',
+                borderRadius: 8, padding: '10px 14px', marginBottom: 12,
+                fontSize: 13, fontWeight: 600, textAlign: 'center',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                {shopMsg.text}
+              </div>
+            )}
             <div className="shop-packs">
-              <div className="shop-pack" onClick={() => buySeedPack('basic')}>
+              <div className="shop-pack" onClick={() => handleBuyPack('basic')} style={{ cursor: 'pointer' }}>
                 <div className="pack-visual basic">?</div>
                 <div className="pack-name">Basic Pack</div>
                 <div className="pack-desc">1 carta RWA aleatoria</div>
                 <div className="pack-price">$2 gUSD</div>
                 <div className="pack-rates">85% Common / 12% Rare / 2.5% Epic / 0.5% Legendary</div>
               </div>
-              <div className="shop-pack" onClick={() => buySeedPack('premium')}>
+              <div className="shop-pack" onClick={() => handleBuyPack('premium')} style={{ cursor: 'pointer' }}>
                 <div className="pack-visual premium">?</div>
                 <div className="pack-name">Premium Pack</div>
                 <div className="pack-desc">3 cartas con mejores odds</div>
