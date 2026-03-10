@@ -279,14 +279,21 @@ glade-mvp/
 - `getEconomyStats()` — Returns RWA/game pool totals
 - 4 seed types initialized in constructor
 
+#### Deployed Contracts (Avalanche Fuji Testnet)
+
+| Contract | Address | Explorer |
+|----------|---------|---------|
+| GladeToken (gUSD) | `0x754445740569F81Bc1B11f3dD29833eD63e543Cf` | [View on SnowTrace](https://testnet.snowtrace.io/address/0x754445740569F81Bc1B11f3dD29833eD63e543Cf) |
+| GladeFarm | `0x7FDEAa6818748982CFd35e66e46c80FcC971aBe8` | [View on SnowTrace](https://testnet.snowtrace.io/address/0x7FDEAa6818748982CFd35e66e46c80FcC971aBe8) |
+
 #### Compile & Deploy
 
 ```bash
 # Compile
-npx hardhat compile --config hardhat.config.cjs
+./node_modules/.bin/hardhat compile --config hardhat.config.cjs
 
 # Deploy to Fuji (requires PRIVATE_KEY in .env)
-npx hardhat run scripts/deploy.js --network fuji --config hardhat.config.cjs
+./node_modules/.bin/hardhat run scripts/deploy.cjs --network fuji --config hardhat.config.cjs
 ```
 
 ### Environment Variables
@@ -295,9 +302,9 @@ npx hardhat run scripts/deploy.js --network fuji --config hardhat.config.cjs
 # Contract deployment (MetaMask private key for Fuji)
 PRIVATE_KEY=your_private_key_here
 
-# Contract addresses (set after deploying)
-VITE_GLADE_TOKEN_ADDRESS=0x_deployed_token_address
-VITE_GLADE_FARM_ADDRESS=0x_deployed_farm_address
+# Contract addresses (deployed on Fuji testnet)
+VITE_GLADE_TOKEN_ADDRESS=0x754445740569F81Bc1B11f3dD29833eD63e543Cf
+VITE_GLADE_FARM_ADDRESS=0x7FDEAa6818748982CFd35e66e46c80FcC971aBe8
 ```
 
 ### AI Context Files
