@@ -1,5 +1,6 @@
 import { useGameStore, CROP_TYPES } from '../../store/gameStore'
 import { RARITY } from '../../store/seedCards'
+import { useGladeContract } from '../../hooks/useGladeContract'
 
 const YieldDashboard = () => {
   const showYieldDashboard = useGameStore(s => s.showYieldDashboard)
@@ -10,6 +11,8 @@ const YieldDashboard = () => {
   const stakingRewards = useGameStore(s => s.stakingRewards)
   const stakedCards = useGameStore(s => s.stakedCards)
   const plots = useGameStore(s => s.plots)
+
+  const { economyStats } = useGladeContract()
 
   if (!showYieldDashboard) return null
 
@@ -71,10 +74,31 @@ const YieldDashboard = () => {
           </span>
         </div>
 
-        <div style={{ marginTop: 12, padding: 12, background: 'rgba(232,65,66,0.08)', borderRadius: 10, border: '1px solid rgba(232,65,66,0.2)' }}>
-          <div style={{ fontSize: 12, color: '#E84142', fontWeight: 600, marginBottom: 4 }}>Powered by Avalanche C-Chain</div>
-          <div style={{ fontSize: 11, color: '#888' }}>75% al fondo RWA, 25% al juego. Pest rewards y staking salen del Game Pool.</div>
-        </div>
+        {economyStats && (
+          <div style={{ marginTop: 12, padding: 12, background: 'rgba(232,65,66,0.08)', borderRadius: 10, border: '1px solid rgba(232,65,66,0.2)' }}>
+            <div style={{ fontSize: 12, color: '#E84142', fontWeight: 600, marginBottom: 8 }}>⛓ On-chain Stats (Fuji)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11, fontFamily: 'Space Mono' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: '#2ecc71' }}>${economyStats.rwa}</div>
+                <div style={{ color: '#666', marginTop: 2 }}>RWA Pool</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: '#3498db' }}>${economyStats.game}</div>
+                <div style={{ color: '#666', marginTop: 2 }}>Game Pool</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: '#f1c40f' }}>{economyStats.seeds}</div>
+                <div style={{ color: '#666', marginTop: 2 }}>Seeds minted</div>
+              </div>
+            </div>
+          </div>
+        )}
+        {!economyStats && (
+          <div style={{ marginTop: 12, padding: 12, background: 'rgba(232,65,66,0.08)', borderRadius: 10, border: '1px solid rgba(232,65,66,0.2)' }}>
+            <div style={{ fontSize: 12, color: '#E84142', fontWeight: 600, marginBottom: 4 }}>Powered by Avalanche C-Chain</div>
+            <div style={{ fontSize: 11, color: '#888' }}>75% al fondo RWA, 25% al juego. Pest rewards y staking salen del Game Pool.</div>
+          </div>
+        )}
 
         <button className="btn-cancel" onClick={toggleYieldDashboard} style={{ width: '100%', marginTop: 12 }}>Cerrar</button>
       </div>

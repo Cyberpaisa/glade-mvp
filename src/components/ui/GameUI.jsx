@@ -22,7 +22,7 @@ const GameUI = () => {
   const reopenTutorial = useGameStore(s => s.reopenTutorial)
 
   const { address, isConnected, chain, balance, connectWallet, disconnect, isPending } = useWallet()
-  const { claimFaucet, contractsDeployed, isPending: isFaucetPending, txHash } = useGladeContract()
+  const { claimFaucet, contractsDeployed, gUSDBalanceFormatted, isFaucetPending, faucetHash } = useGladeContract()
 
   useEffect(() => {
     if (isConnected && address) {
@@ -55,6 +55,15 @@ const GameUI = () => {
               <div className="seed-label">gUSD Balance</div>
             </div>
           </div>
+          {gUSDBalanceFormatted !== null && (
+            <div className="seed-balance" style={{ background: 'rgba(52,152,219,0.1)', borderColor: 'rgba(52,152,219,0.3)' }}>
+              <span className="seed-icon">⛓</span>
+              <div>
+                <div className="seed-amount">${gUSDBalanceFormatted}</div>
+                <div className="seed-label">On-chain gUSD</div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="stats-bar">
           <div className="stat-item" onClick={toggleYieldDashboard} style={{ cursor: 'pointer' }}>
@@ -113,9 +122,9 @@ const GameUI = () => {
             {isFaucetPending ? '⏳ Claiming...' : '🚰 Claim 100 gUSD'}
           </button>
         )}
-        {txHash && (
+        {faucetHash && (
           <div style={{ fontSize: 10, color: '#2ecc71', textAlign: 'center', marginTop: 4, fontFamily: 'Space Mono' }}>
-            <a href={`https://testnet.snowtrace.io/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: '#3498db' }}>
+            <a href={`https://testnet.snowtrace.io/tx/${faucetHash}`} target="_blank" rel="noreferrer" style={{ color: '#3498db' }}>
               View TX ↗
             </a>
           </div>
