@@ -91,7 +91,7 @@ export const useGameStore = create((set, get) => ({
   walletAddress: null,
 
   // Economy (gUSD)
-  usdcBalance: 100,
+  usdcBalance: 500,
   rwaPoolTotal: 0,
   gamePoolTotal: 0,
   accumulatedYield: 0,
@@ -103,7 +103,7 @@ export const useGameStore = create((set, get) => ({
 
   // Weather & Time
   weather: 'sunny',
-  timeOfDay: 0,
+  timeOfDay: 0.28, // starts mid-morning → natural day→dusk→night progression
   dayCount: 1,
 
   // Pests

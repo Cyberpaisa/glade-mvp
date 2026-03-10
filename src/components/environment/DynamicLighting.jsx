@@ -19,8 +19,8 @@ const DynamicLighting = () => {
   let skyTurbidity = 3
 
   if (isNight) {
-    ambientIntensity = 0.35
-    dirIntensity = 0.25
+    ambientIntensity = 0.55
+    dirIntensity = 0.45
     dirColor = '#6688cc'
     skyTurbidity = 8
   } else if (isDusk) {
@@ -63,7 +63,7 @@ const DynamicLighting = () => {
       />
       <directionalLight
         position={[-5, 8, -5]}
-        intensity={isNight ? 0.15 : 0.3}
+        intensity={isNight ? 0.3 : 0.3}
         color={isNight ? '#445577' : '#87CEEB'}
       />
       <Sky
