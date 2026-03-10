@@ -1,5 +1,7 @@
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { parseEther } from 'viem'
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { useAccount } from 'wagmi'
+import { parseEther, formatEther } from 'viem'
+import { useState, useEffect } from 'react'
 
 const GLADE_TOKEN_ABI = [
   {
@@ -57,43 +59,110 @@ const TOKEN_ADDRESS = import.meta.env.VITE_GLADE_TOKEN_ADDRESS || null
 const FARM_ADDRESS = import.meta.env.VITE_GLADE_FARM_ADDRESS || null
 
 export function useGladeContract() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
-
+  const { address } = useAccount()
   const contractsDeployed = !!(TOKEN_ADDRESS && FARM_ADDRESS)
+
+  // ── Read: gUSD balance on-chain ──────────────────────────────────────────
+  const { data: gUSDRaw, refetch: refetchBalance } = useReadContract({
+    address: TOKEN_ADDRESS,
+    abi: GLADE_TOKEN_ABI,
+    functionName: 'balanceOf',
+    args: [address],
+    query: { enabled: contractsDeployed && !!address },
+  })
+
+  // ── Read: economy stats on-chain ─────────────────────────────────────────
+  const { data: economyStatsRaw, refetch: refetchStats } = useReadContract({
+    address: FARM_ADDRESS,
+    abi: GLADE_FARM_ABI,
+    functionName: 'getEconomyStats',
+    query: { enabled: contractsDeployed },
+  })
+
+  const gUSDBalance = gUSDRaw != null ? parseFloat(formatEther(gUSDRaw)) : null
+  const gUSDBalanceFormatted = gUSDBalance != null ? gUSDBalance.toFixed(2) : null
+
+  const economyStats = economyStatsRaw
+    ? {
+        rwa: parseFloat(formatEther(economyStatsRaw[0])).toFixed(2),
+        game: parseFloat(formatEther(economyStatsRaw[1])).toFixed(2),
+        seeds: Number(economyStatsRaw[2]),
+      }
+    : null
+
+  // ── Write: faucet ─────────────────────────────────────────────────────────
+  const { writeContract: writeFaucet, data: faucetHash, isPending: isFaucetPending } = useWriteContract()
+  const { isSuccess: isFaucetSuccess } = useWaitForTransactionReceipt({ hash: faucetHash })
+
+  useEffect(() => {
+    if (isFaucetSuccess) {
+      refetchBalance()
+    }
+  }, [isFaucetSuccess])
 
   const claimFaucet = () => {
     if (!TOKEN_ADDRESS) return
-    writeContract({
-      address: TOKEN_ADDRESS,
-      abi: GLADE_TOKEN_ABI,
-      functionName: 'claimFaucet',
-    })
+    writeFaucet({ address: TOKEN_ADDRESS, abi: GLADE_TOKEN_ABI, functionName: 'claimFaucet' })
   }
 
-  const approveToken = (amount) => {
+  // ── Write: approve + buySeed (2-step) ────────────────────────────────────
+  const [pendingSeedTypeId, setPendingSeedTypeId] = useState(null)
+  const [buyStep, setBuyStep] = useState('idle') // 'idle' | 'approving' | 'buying' | 'done'
+
+  const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending } = useWriteContract()
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash })
+
+  const { writeContract: writeBuy, data: buyHash, isPending: isBuyPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isBuySuccess } = useWaitForTransactionReceipt({ hash: buyHash })
+
+  // Step 2: after approve confirmed → call buySeed
+  useEffect(() => {
+    if (isApproveSuccess && pendingSeedTypeId !== null && buyStep === 'approving') {
+      setBuyStep('buying')
+      writeBuy({
+        address: FARM_ADDRESS,
+        abi: GLADE_FARM_ABI,
+        functionName: 'buySeed',
+        args: [BigInt(pendingSeedTypeId)],
+      })
+      setPendingSeedTypeId(null)
+    }
+  }, [isApproveSuccess, pendingSeedTypeId, buyStep])
+
+  // After buySeed confirmed → refetch balance + stats
+  useEffect(() => {
+    if (isBuySuccess) {
+      setBuyStep('done')
+      refetchBalance()
+      refetchStats()
+    }
+  }, [isBuySuccess])
+
+  /**
+   * approveAndBuySeed — full on-chain purchase flow:
+   * 1. approve(FARM_ADDRESS, cost)
+   * 2. buySeed(seedTypeId)  ← runs after approve confirmed
+   *
+   * @param {number} seedTypeId  — contract seed index (0-3)
+   * @param {number} cost        — seed cost in gUSD (e.g. 10)
+   */
+  const approveAndBuySeed = (seedTypeId, cost) => {
     if (!TOKEN_ADDRESS || !FARM_ADDRESS) return
-    writeContract({
+    setBuyStep('approving')
+    setPendingSeedTypeId(seedTypeId)
+    writeApprove({
       address: TOKEN_ADDRESS,
       abi: GLADE_TOKEN_ABI,
       functionName: 'approve',
-      args: [FARM_ADDRESS, parseEther(amount.toString())],
+      args: [FARM_ADDRESS, parseEther(cost.toString())],
     })
   }
 
-  const buySeedOnChain = (seedTypeId) => {
-    if (!FARM_ADDRESS) return
-    writeContract({
-      address: FARM_ADDRESS,
-      abi: GLADE_FARM_ABI,
-      functionName: 'buySeed',
-      args: [BigInt(seedTypeId)],
-    })
-  }
+  const resetBuyStep = () => setBuyStep('idle')
 
   const claimYieldOnChain = (tokenId) => {
     if (!FARM_ADDRESS) return
-    writeContract({
+    writeBuy({
       address: FARM_ADDRESS,
       abi: GLADE_FARM_ABI,
       functionName: 'claimYield',
@@ -101,16 +170,30 @@ export function useGladeContract() {
     })
   }
 
+  const isPending = isApprovePending || isBuyPending
+  const txHash = buyHash || approveHash
+
   return {
     contractsDeployed,
+    gUSDBalance,
+    gUSDBalanceFormatted,
+    economyStats,
+    refetchBalance,
+    refetchStats,
+    // faucet
     claimFaucet,
-    approveToken,
-    buySeedOnChain,
-    claimYieldOnChain,
-    txHash: hash,
+    isFaucetPending,
+    faucetHash,
+    isFaucetSuccess,
+    // buy flow
+    approveAndBuySeed,
+    buyStep,        // 'idle' | 'approving' | 'buying' | 'done'
+    resetBuyStep,
     isPending,
     isConfirming,
-    isSuccess,
-    error,
+    isBuySuccess,
+    txHash,
+    // yield
+    claimYieldOnChain,
   }
 }
