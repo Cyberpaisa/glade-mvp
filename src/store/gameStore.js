@@ -155,16 +155,17 @@ export const useGameStore = create((set, get) => ({
   toggleYieldDashboard: () => set(s => ({ showYieldDashboard: !s.showYieldDashboard })),
 
   // Buy seed (direct, no card) — 75/25 split applies
-  buySeed: (plotId, cropType) => {
+  // skipLocalBalance: true when on-chain tx handles payment (wallet connected)
+  buySeed: (plotId, cropType, skipLocalBalance = false) => {
     const state = get()
     const crop = CROP_TYPES[cropType]
     if (!crop) return false
-    if (state.usdcBalance < crop.costUSD) return false
+    if (!skipLocalBalance && state.usdcBalance < crop.costUSD) return false
     const plot = state.plots.find(p => p.id === plotId)
     if (!plot || plot.plant) return false
 
     set({
-      usdcBalance: state.usdcBalance - crop.costUSD,
+      usdcBalance: skipLocalBalance ? state.usdcBalance : state.usdcBalance - crop.costUSD,
       rwaPoolTotal: state.rwaPoolTotal + crop.rwaAllocation,
       gamePoolTotal: state.gamePoolTotal + crop.gameAllocation,
       totalPlanted: state.totalPlanted + 1,
@@ -580,6 +581,9 @@ export const useGameStore = create((set, get) => ({
   reopenTutorial: () => set({ showTutorial: true, tutorialStep: 0 }),
 
   // Notifications
+  addNotification: (message, type = 'info', txHash = null) => set(s => ({
+    notifications: [...s.notifications, { id: Date.now(), message, type, txHash }]
+  })),
   clearNotification: (id) => set(s => ({
     notifications: s.notifications.filter(n => n.id !== id)
   }))
