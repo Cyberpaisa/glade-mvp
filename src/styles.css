@@ -297,6 +297,16 @@
   pointer-events: none;
 }
 
+.notification.tx {
+  border: 1px solid rgba(52, 152, 219, 0.5);
+  pointer-events: auto;
+}
+
+.notification.tx a {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .notification {
   background: var(--bg-panel);
   backdrop-filter: blur(10px);
